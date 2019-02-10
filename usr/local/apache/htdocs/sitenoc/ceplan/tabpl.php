@@ -1,0 +1,216 @@
+<?
+
+// CEPLAN2.0 - NOC - 2004
+// Mostra o mapa dos plantoes, trocas pessoais, e ferias.
+//
+// -------------------------
+
+
+//echo "A $mesini ou $HTTP_POST_VARS[mesini]<BR>";
+include ('tabcadplahtml.inc');
+include ('config.php');
+include ('paradorot.php');
+
+//echo "iaaa $mesini<BR>";
+//echo "NUM $num<BR>";
+//echo "MR: $mesg_retorno<BR>";
+//echo "$mesg_retorno[0]<BR>";
+list($sysop_0,$desde,$permitido)=split("-;-",$mesg_retorno[0]);
+//echo "Proximo: $mesg_impressa - Permitido: $permitido - Desde $desde<BR>";
+
+list($sysop_1,$desde_1,$permitido_1)=split("-;-",$mesg_retorno[1]);
+//$sysop_proximo_1=$mesg_impressa_1;
+//echo "Proximo1: $mesg_impressa_1<BR>";
+
+list($sysop_2,$desde_2,$permitido_2)=split("-;-",$mesg_retorno[2]);
+//$sysop_proximo_2=$mesg_impressa_2;
+//echo "Proximo 2: $mesg_impressa_2<BR>";
+
+// Both 15/09/2005.
+//if((empty($sysop_0)) OR (empty($desde)) OR (empty($permitido)))
+// echo "Problema na consulta pelo ultimo sysop, data do ultimo preenchimento e numero de plantoes permitido.<BR>";
+
+// Layer para fechar as trocas pessoais
+echo "<div id=\"fechartrocas\" style=\"position:absolute; left:546px; top:77px; width:49px; height:2px; z-index:4; background-color: #FF9900; layer-background-color: #FF9900; border: 1px none #000000; visibility: hidden;\"><a href=\"#\" onClick=\"MM_showHideLayers('fechartrocas','','hidden','mostratroca','','hidden')\"><img src='fechar.JPG'></a></div>";
+
+// Layer para mostrar as trocas pessoais
+echo "<div id=\"mostratroca\" style=\"position:absolute; left:15px; top:57px; width:586px; height:519px; z-index:1; background-color: #66CCCC; layer-background-color: #66CCCC; border: 1px none #000000; visibility: hidden;\">";
+//echo "</div>";
+include ('mostratrocas.inc');
+echo "</div>";
+
+// Layer para mostrar as ferias
+echo "<div id=\"fecharferias\" style=\"position:absolute; left:856px; top:387px; width:49px; height:2px; z-index:5; background-color: #FF9900; layer-background-color: #FF9900; border: 1px none #000000; visibility: hidden;\"><a href=\"#\" onClick=\"MM_showHideLayers('sombraferias','','hide','mostraferias','','hide','fecharferias','','hide')\"><img src='fechar.JPG'></a></div>";
+
+echo "<div id=\"sombraferias\" style=\"position:absolute; left:615px; top:376px; width:260px; height:155px; z-index:1; background-color: #CCCCCC; layer-background-color: #CCCCCC; border: 1px none #000000; visibility: hidden\"></div>";
+
+echo "<div id=\"mostraferias\" style=\"position:absolute; left:625px; top:384px; width:252px; height:307px; z-index:2; background-color: #FFFFFF; layer-background-color: #FF9900; border: 1px none #000000; visibility: hidden;\">";
+include ('mostraferias.inc');
+echo "</div>";
+
+
+echo "
+<table width='900' border='0'>
+  <tr>
+    <td width='611'>
+
+    <table width='100%' border='0'>
+        <tr class='linha'>
+          <td width='6%'>Dia/Turno</td>
+          <td width='6%'>&nbsp;</td>
+          <td width='20%'><div align='center'>Madrugada <br>
+              1h as 7hs</div></td>
+          <td width='20%'><div align='center'>Manha <br>
+              7hs as 13hs</div></td>
+          <td width='20%'><div align='center'>Tarde <br>
+              13hs as 19hs</div></td>
+          <td width='20%'><div align='center'>Noite <br>
+              19hs a 1h</div></td>
+          <td width='3%'><a href=\"#\" onClick=\"MM_showHideLayers('mostratroca','','show','fechartrocas','','show')\">Trocas</a>
+</td>
+        </tr>
+      </table>";
+
+// variavel utilizada para deixar o nome do sysop em destaque na visualizacao.
+$destaque=$sysoplogado;
+
+// conta quantoes plantoes faltam para preencher.
+$faltapreencher=0;
+
+//if($preenchimento == "readonly")
+// $sysoplogado="null";
+
+//if($sysop_ult == $sysoplogado)
+// $sysoplogado=$sysop_ult;
+
+ echo "<form method='POST' action='ceplan_add.php'>";
+ echo "<input type='HIDDEN' name='mesini' value='$mesini'>";
+ echo "<input type='HIDDEN' name='sysoplogado' value='$sysoplogado'>";
+ echo "<input type='HIDDEN' name='sysop_0' value='$sysop_0'>";
+ echo "<input type='HIDDEN' name='sysop_1' value='$sysop_1'>";
+ echo "<input type='HIDDEN' name='sysop_2' value='$sysop_2'>";
+ echo "<input type='HIDDEN' name='permitido' value='$permitido'>";
+ echo "<input type='HIDDEN' name='saldo' value='$sal'>";
+ echo "<input type='HIDDEN' name='num' value='$num'>";
+ 
+$periodo="";$dia="";$dsemana=0;$flag=FALSE;$numplan=0;
+
+$conexao = mysql_connect("$imp_hostname","$imp_user","$imp_pass");
+$db = mysql_select_db($imp_banco);
+$sql = "SELECT * FROM tabpla WHERE periodo='$mesini' ORDER by numseq;";
+$resultado = mysql_query($sql)
+or die ("Não foi possível realizar a consulta ao banco de dados");
+
+$i=0; $tot_i=0; // usado para controle  apos o post.
+while ($linha=mysql_fetch_array($resultado)) 
+{
+ $numseq    = $linha["numseq"];
+ $dia       = $linha["dia"];
+ $flag      = $linha["flag"];
+ $numplan   = $linha["numplan"];
+ $madrugaa  = $linha["madrugaa"];
+ $madrugab  = $linha["madrugab"];
+ $manhaa    = $linha["manhaa"];
+ $manhab    = $linha["manhab"];
+ $tardea    = $linha["tardea"];
+ $tardeb    = $linha["tardeb"];
+ $noitea    = $linha["noitea"];
+ $noiteb    = $linha["noiteb"];
+ 
+ list($diax,$dia_s)=split("-",$dia);
+
+ $i++;
+
+ if($dia_s == "Sab")
+ echo "<hr>";
+
+ if($flag == "f") 
+  {
+   include ('cadplaferiado.php');
+   $temferiado="TRUE";
+  }
+ else
+  {
+   include ('cadplanormal.php');
+   $temferiado="FALSE";
+  }
+}
+
+echo "<hr>";
+//if(empty($sysop_ult))
+// {
+//  echo "Falha na autenticacao - verificar autenticacao e ou arquivo de configuracao sysop_ult<BR>";
+// exit;
+// }
+if(empty($sysoplogado))
+ {
+  echo "Falha na autenticacao - verificar autenticacao e ou arquivo de configuracao [sysoplogado]<BR>";
+  //exit;
+ }
+ 
+//echo "<hr>";
+  //echo "tot  $faltapreencher<BR>";
+  echo "<input type='HIDDEN' name=faltapreencher value='$faltapreencher'>";
+
+if(($moderador == $sysoplogado) AND ($faltapreencher != 0))
+ include ('ceplan_emnome.php');
+
+if($faltapreencher != 0)
+ echo "<p class='rodapedestaque'>$sysop_0 deve preencher $permitido plantao(oes). Proximos: $sysop_1 e depois o $sysop_2.";
+
+if(($temferiado == "TRUE") AND ($faltapreencher != 0))
+ echo "<p class='rodapedestaque'>Pode escolher 1 feriado, se houver.";
+
+echo "<BR><strong><font color='#CC0000' size='2' face='Arial, Helvetica, sans-serif'>Os horários do feriado são: Madrugada | [Manhã | Matutino] | [Tarde | Vespertino] | Noite.</font></strong>";
+if($faltapreencher > 0)
+ {
+  if(($moderador == $sysoplogado) OR ($sysop_0 == $sysoplogado))
+     echo "<p><input type='submit' class='menuformatado' value='Preencher' name='B1'>&nbsp;&nbsp;<input type='reset' value='Limpar' name='B2' class='menuformatado'></p></form>";
+ }
+
+echo "<p class='rodape'>Autenticado por $sysoplogado - Moderador: $moderador</p>";
+
+// PARTE DO SALDO --------------------------------------------------------
+echo "
+	</td>
+    <td width='1'>&nbsp;</td>
+    <td valign='top' width='290'>";
+
+//include ('consultasaldohtml.inc'); 
+
+//$mesini='16032004a15042004';
+echo "
+<table width='297' border='0'>
+  <tr>
+    <td>
+        <table width='100%' height='10' border='0'>
+          <tr>
+            <td width='5%'>&nbsp;</td>
+            <td width='20%' valign='bottom'><img src='sysop.JPG'></td>
+            <td width='10%'  valign='bottom'><div align='right'><img src='noplantaofaltante.JPG'></td>
+            <td width='5%' valign='bottom'><div align='right'><img src='diasausente.JPG'></td>
+            <td width='10%' valign='bottom'><div align='right'><img src='saldomes.JPG'></td>
+            <td width='10%' valign='bottom'><div align='right'><img src='saldototal.JPG'></td>
+            <td width='15%' valign='bottom'><div align='right'><a href=\"#\" onClick=\"MM_showHideLayers('sombraferias','','show','mostraferias','','show','fecharferias','','show')\"><img src='ferias.JPG'><a/></td>
+          </tr>
+        </table>
+	</td>
+  </tr>
+</table>";
+
+include ('showsaldos.inc');
+
+echo " </table>
+      </td>
+  </tr>
+</table>
+
+</td>
+  </tr>
+</table>
+
+</body>
+</html>
+";
+
+?>

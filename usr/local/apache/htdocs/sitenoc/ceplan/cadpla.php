@@ -1,0 +1,527 @@
+<?
+// Alterado em 14/Julho/2003 - adicionado uma cor diferente para destacar os plantoes do sysop.
+//                           - no email agora aparece o nome do proximo sysop.
+// Alterado em 28/Julho/2003 - controle do saldo 0.5.
+// Alterado em 20/Agosto/2003 - sysop de ferias com saldo quebrado, ex: 2.5 deve preencher apenas 2.
+// Alterado em 03/Setembro/2003 - controle de saldo X ordem de prenchimento - bug detectado no periodo 16/10/2003 a 15/11/2003.
+
+// Don't use cache (required for Opera)
+$GLOBALS['now'] = gmdate('D, d M Y H:i:s') . ' GMT';
+header('Expires: ' . $GLOBALS['now']); // rfc2616 - Section 14.21
+header('Last-Modified: ' . $GLOBALS['now']);
+header('Cache-Control: no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0'); // HTTP/1.1
+header('Pragma: no-cache'); // HTTP/1.0
+// Define the charset to be used
+header('Content-Type: text/html; charset=' . $GLOBALS['charset']);
+/*
+
+//Eh obrigatorio que este script seja chamado pelo "$obriga":
+$obriga="php";
+$headers = getallheaders();
+while (list ($header, $value) = each ($headers))
+ {
+  $temrefer=ereg($obriga,$value);
+  if($temrefer)
+    $passa="OK";
+ //echo "$header: $value<br/>\n";
+}
+
+if((!$passa=="OK") OR (empty($passa)))
+{
+ naoabre();
+ exit;
+}
+*/
+
+if(empty($HTTP_POST_VARS[mesini]))
+ {
+  naoabre();
+  exit;
+ }
+
+$mesini=$HTTP_POST_VARS[mesini];
+Global $mesini;
+
+include 'config1.php';
+
+echo "<html>
+<head>
+<style type=text/css>
+<!--
+a {text-decoration: none}
+-->
+</style>
+<META HTTP-EQUIV='pragma' CONTENT='no-cache'>
+</head>";
+echo "<body leftmargin='5' topmargin='0' marginwidth='0' marginheight='0'>";
+echo "<font face='Courier New' size='1'>$mostramsglogado &nbsp;&nbsp;<font face='Courier New' size='1'><a href='plantoes.php'>&nbsp;&nbsp;&nbsp;VOLTAR</a></font>";
+
+// Teste se o periodo jah estiver fechado.
+include 'mbcfg.php';
+$conexao = mysql_connect("$imp_hostname","$imp_user","$imp_pass");
+$db = mysql_select_db($imp_banco);
+$sql = "SELECT * FROM tabsal WHERE periodo='$mesini'";
+$resultado = mysql_query($sql)
+or die ("Não foi possível realizar a consulta ao banco de dados");
+while ($linha=mysql_fetch_array($resultado)) 
+{
+ $numseq  =$linha["numseq"];
+ $periodo =$linha["periodo"];
+ $ctrl    =$linha["ctrl"];
+ $num     =$linha["num"];
+
+ if($ctrl == "f")
+  {
+   echo "<p><font face='Courier New' size='2' color='#008000'>Este periodo ja esta fechado.</font></p><BR>\n"; 
+   $preenchimento="readonly"; $devsysop=""; $npermitido=0; $sal="";
+   mostrapreenchimento($sysoplogado,$devsysop,$npermitido,$mesini,$sal,$preenchimento);
+   exit;
+  }
+ $horasmes=$linha["num"]/2;
+}
+
+$totpresente=0; $falta=0;
+estadeferias($mesini,$sysoplogado);
+rodada($mesini,$sysoplogado);
+
+Function mostrapreenchimento($sysoplogado,$devsysop,$npermitido,$mesini,$sal,$preenchimento)
+{
+include 'config1.php';
+
+ //echo "MODERADOR: $moderador<BR>";
+ //echo "devSYSOP: $devsysop<BR>";
+ //echo "<BR>Logado: $sysoplogado<BR>";
+
+// ----- ver uma solucao um pouco melhor pra ver se tem feriado neste periodo. MBoth 2/6/2003.
+$temferiado=""; 
+include 'mbcfg.php';
+$conexao = mysql_connect("$imp_hostname","$imp_user","$imp_pass");
+$db = mysql_select_db($imp_banco);
+$sql = "SELECT * FROM tabfer WHERE periodo='$mesini'";
+$resultado = mysql_query($sql)
+or die ("Não foi possível realizar a consulta ao banco de dados");
+while ($linha=mysql_fetch_array($resultado))
+{
+ $numseq  =$linha["numseq"];
+ $periodo =$linha["periodo"];
+ $dia     =$linha["dia"];
+ $diasem  =$linha["diasem"];
+ $descricao=$linha["descricao"];
+
+ // soh pra ter certeza q tem feriado neste periodo.
+ $temferiado=ereg($mesini, $periodo);
+ if($temferiado)
+   $temferiado="sim";
+ //echo "FERIADO: $feriado<BR>";
+}
+
+//---------------
+
+// variavel utilizada para deixar o nome do sysop em destaque na visualizacao.
+$destaque=$sysoplogado;
+
+if($preenchimento == "readonly")
+ $sysoplogado="null";
+
+if($devsysop == $sysoplogado)
+ $sysoplogado=$devsysop;
+
+$nperiodo=$mesini;
+
+if ($sysoplogado == $devsysop)
+  echo "<p><font face='Courier New' size='2'color='#008000' size='2'><b>$devsysop voce deve preencher xx plantao(oes)<br>";
+else 
+ if ($preenchimento != "readonly")
+  echo $paradoem;
+
+if (($temferiado) AND ($devsysop == $sysoplogado))
+echo "</b><font face='Courier New' size='2' color='#0000FF'>voce pode escolher 1 feriado.</font></p>";
+
+print " <table border='0' width='100%'>
+          <tr valign='0'>
+            <td width='30%' align='center'><font color='#000080' size='2' face='Arial'>[Madrugada] 1h as 7hs</font></td>
+            <td width='20%' align='center'><font color='#000080' size='2' face='Arial'>[Manha] 7hs as 13hs</font></td>
+            <td width='25%' align='center'><font color='#000080' size='2' face='Arial'>[ Tarde ] 13hs as 19hs</font></td>
+            <td width='25%' align='center'><font color='#000080' size='2' face='Arial'>[ Noite ] 19hs a 1h</font></td>
+          </tr>
+        </table>
+ <table border='0' width='100%'>
+  <tr valign='0'>";
+
+//if($HTTP_POST_VARS[user] == $sysoplogado)
+echo "<form method='POST' action='cadpla2.php'>";
+
+ echo "<input type='HIDDEN' name=mesini value='$mesini'>";
+ echo "<input type='HIDDEN' name=sysop value='$sysoplogado'>";
+ echo "<input type='HIDDEN' name=nperiodo value='$nperiodo'>";
+ echo "<input type='HIDDEN' name=permitido value='$npermitido'>";
+ echo "<input type='HIDDEN' name=saldo value='$sal'>";
+
+$periodo="";$dia="";$dsemana=0;$flag=0;$numplan=0;
+
+$conexao = mysql_connect("$imp_hostname","$imp_user","$imp_pass");
+$db = mysql_select_db($imp_banco);
+
+$sql = "SELECT * FROM tabpla WHERE periodo='$mesini' ORDER by numseq;";
+
+$resultado = mysql_query($sql)
+or die ("Não foi possível realizar a consulta ao banco de dados");
+
+$i=0;
+while ($linha=mysql_fetch_array($resultado)) 
+{
+ $numseq    = $linha["numseq"];
+ $dia       = $linha["dia"];
+ $flag      = $linha["flag"];
+ $numplan   = $linha["numplan"];
+ $madrugaa  = $linha["madrugaa"];
+ $madrugab  = $linha["madrugab"];
+ $manhaa    = $linha["manhaa"];
+ $manhab    = $linha["manhab"];
+ $tardea    = $linha["tardea"];
+ $tardeb    = $linha["tardeb"];
+ $noitea    = $linha["noitea"];
+ $noiteb    = $linha["noiteb"];
+
+ $i++;
+ echo "<table border='0' width='100%'>";
+ echo "  <tr>";
+ //echo "<table border='0' width='100%'>";
+ echo "  <tr>";
+ $quebralinha=ereg('Sab',$dia);
+ if($quebralinha)
+  echo "<hr>";
+ echo "    <td width='25%'>";
+ echo "      <table border='0' width='100%'>";
+ echo "        <tr>";
+
+ if($flag == "f") 
+  echo "<td width='56%' bgcolor='#00FFFF'>&nbsp;<font face='Arial' size='2'>Dia $dia</td>";
+ else
+  echo "<td width='56%'>&nbsp;<font face='Arial' size='2'>Dia $dia</td>";
+
+
+ // ------------- Madrugada ----------------
+ if($madrugaa == 'preencher')  
+  {
+   if($flag == "f")
+    echo "<td width='44%' bgcolor='#00FFFF' align='center'> <input type='checkbox' name='maferiado$i' size='10' value='maferiado;$dia'>&nbsp;</td>";
+   else
+    echo "<td width='44%' align='center'> <input type='checkbox' name='ma$i' size='10' value='ma;$dia'><font face='Courier New' size='2'>&nbsp;</td>";
+   $faltapreencher++;
+  }
+ else 
+  if($flag == "f")
+   if($destaque == $madrugaa)
+    echo "<td width='44%' bgcolor='#00FFFF' align='center'><b><font color='#FF00FF' size='3' face='Courier New'> $madrugaa&nbsp;</font></b></td>";
+   else
+    echo "<td width='44%' bgcolor='#00FFFF' align='center'><font face='Courier New' size='2'><font face='Courier New' size='2'>$madrugaa&nbsp;</td>";
+  else
+   if($destaque == $madrugaa)
+    echo "<td width='44%' align='center'><b><font color='#FF00FF' size='3' face='Courier New'> $madrugaa&nbsp;</font></b></td>";
+   else
+    echo "<td width='44%' align='center'><font face='Courier New' size='2'><font face='Courier New' size='2'>$madrugaa&nbsp;</td>";
+ echo "    </tr>";
+ echo "  </table>";
+ echo " </td>";
+
+ // ------------- Manha ----------------
+ echo "    <td width='25%'>";
+ echo "      <table border='0' width='100%'>";
+ if($manhaa == "preencher")
+  {
+   if($flag == "f")
+    echo "<td width='50%' bgcolor='#00FFFF' align='center'><input type='checkbox' name='mhferiado$i' size='10' value='mhferiado;$dia'>&nbsp;</td>";
+   else
+    echo "<td width='50%' align='center'><input type='checkbox' name='mh$i' size='10' value='mh;$dia'>&nbsp;</td>";
+   $faltapreencher++;         
+  }      
+ else 
+  if($flag == "f")
+    if($destaque == $manhaa)
+     echo "<td width='50%'  bgcolor='#00FFFF' align='center'><b><font color='#FF00FF' size='3' face='Courier New'> $manhaa&nbsp;</font></b></td>";
+    else
+     echo "<td width='50%'  bgcolor='#00FFFF' align='center'><font face='Courier New' size='2'>$manhaa&nbsp;</td>";
+  else
+   if($destaque == $manhaa)
+    echo "<td width='50%' align='center'><b><font color='#FF00FF' size='3' face='Courier New'> $manhaa&nbsp;</font></b></td>";
+   else 
+    echo "<td width='50%' align='center'><font face='Courier New' size='2'>$manhaa&nbsp;</td>";     
+
+// ----
+
+   if($manhab == "preencher")
+   {
+    if($flag == "f")
+     echo "<td width='50%' bgcolor='#00FFFF' align='center'><input type='checkbox' name='miferiado$i' size='10' value='miferiado;$dia'><font face='Courier New' size='2'>&nbsp;</td>";
+    else
+     echo "<td width='50%' align='center'><input type='checkbox' name='mi$i' size='10' value='mi;$dia'><font face='Courier New' size='2'>&nbsp;</td>";
+    $faltapreencher++;
+   }
+  else
+   if($flag == "f")
+    if($destaque == $manhab)
+     echo "<td width='50%' bgcolor='#00FFFF' align='center'><b><font color='#FF00FF' size='3' face='Courier New'> $manhab&nbsp;</font></b></td>";
+    else
+     echo "<td width='50%' bgcolor='#00FFFF' align='center'><font face='Courier New' size='2'><font face='Courier New' size='2'>$manhab&nbsp;</td>";
+   else
+    if($destaque == $manhab)
+     echo "<td width='50%' align='center'><b><font color='#FF00FF' size='3' face='Courier New'> $manhab&nbsp;</font></b></td>";
+    else
+     echo "<td width='50%' align='center'><font face='Courier New' size='2'><font face='Courier New' size='2'>$manhab&nbsp;</td>";
+
+ echo "    </tr>";
+ echo "  </table>";
+ echo "</td>";
+
+ // -------------- Tarde A -----------------
+ echo "    <td width='25%'>";
+ echo "      <table border='0' width='100%'>";
+ echo "  <tr>";
+ if($tardea == "preencher")
+  {
+   if($flag == "f")
+    echo "<td width='50%' bgcolor='#00FFFF' align='center'><input type='checkbox' name='taferiado$i' size='10' value='taferiado;$dia'>&nbsp;</td>";
+   else
+    echo "<td width='50%' align='center'><input type='checkbox' name='ta$i' size='10' value='ta;$dia'><font face='Courier New' size='2'>&nbsp;</td>";
+   $faltapreencher++;
+  }      
+ else 
+  if($flag == "f")
+   if($destaque == $tardea)
+    echo "<td width='50%' bgcolor='#00FFFF' align='center'><b><font color='#FF00FF' size='3' face='Courier New'> $tardea&nbsp;</font></b></td>";
+   else
+    echo "<td width='50%' bgcolor='#00FFFF' align='center'><font face='Courier New' size='2'>$tardea&nbsp;</td>";
+  else
+   if($destaque == $tardea)
+    echo "<td width='50%' align='center'><b><font color='#FF00FF' size='3' face='Courier New'> $tardea&nbsp;</font></b></td>";
+   else
+    echo "<td width='50%' align='center'><font face='Courier New' size='2'>$tardea&nbsp;</td>";
+
+  // -------------- Tarde B -----------------
+  if($tardeb == "preencher")
+   {
+    if($flag == "f")
+     echo "<td width='50%' bgcolor='#00FFFF' align='center'><input type='checkbox' name='tbferiado$i' size='10' value='tbferiado;$dia'><font face='Courier New' size='2'>&nbsp;</td>";
+    else
+     echo "<td width='50%' align='center'><input type='checkbox' name='tb$i' size='10' value='tb;$dia'><font face='Courier New' size='2'>&nbsp;</td>";
+    $faltapreencher++;
+   }      
+  else 
+   if($flag == "f")
+    if($destaque == $tardeb)
+     echo "<td width='50%' bgcolor='#00FFFF' align='center'><b><font color='#FF00FF' size='3' face='Courier New'> $tardeb&nbsp;</font></b></td>";
+    else
+     echo "<td width='50%' bgcolor='#00FFFF' align='center'><font face='Courier New' size='2'><font face='Courier New' size='2'>$tardeb&nbsp;</td>";
+   else
+    if($destaque == $tardeb)  
+     echo "<td width='50%' align='center'><b><font color='#FF00FF' size='3' face='Courier New'> $tardeb&nbsp;</font></b></td>";
+    else
+     echo "<td width='50%' align='center'><font face='Courier New' size='2'><font face='Courier New' size='2'>$tardeb&nbsp;</td>"; 
+  echo "    </tr>";
+  echo "  </table>";
+  echo " </td>";
+
+  // --------------- Noite A ----------------
+  echo "    <td width='25%'>";
+  echo "   <table border='0' width='100%'>";
+  echo " <tr>";
+  if($noitea == "preencher")
+   {
+    if($flag == "f")
+     echo "<td width='50%' bgcolor='#00FFFF' align='center'><input type='checkbox' name='naferiado$i' size='10' value='naferiado;$dia'>&nbsp;</td>";
+    else
+     echo "<td width='50%' align='center'><input type='checkbox' name='na$i' size='10' value='na;$dia'><font face='Courier New' size='2'>&nbsp;</td>";
+    $faltapreencher++;
+   }      
+  else 
+   if($flag == "f")
+    if($destaque == $noitea)
+     echo "<td width='50%' bgcolor='#00FFFF' align='center'><b><font color='#FF00FF' size='3' face='Courier New'> $noitea&nbsp;</font></b></td>";
+    else
+     echo "<td width='50%' bgcolor='#00FFFF' align='center'><font face='Courier New' size='2'>$noitea&nbsp;</td>";  
+  else
+   if($destaque == $noitea)
+    echo "<td width='50%' align='center'><b><font color='#FF00FF' size='3' face='Courier New'> $noitea&nbsp;</font></b></td>";
+   else 
+    echo "<td width='50%' align='center'><font face='Courier New' size='2'>$noitea&nbsp;</td>"; 
+
+  // ---------------- Noite B -----------------
+  if($noiteb == "preencher")
+   {
+    if($flag == "f")
+     echo "<td width='50%' bgcolor='#00FFFF' align='center'><input type='checkbox' name='nbferiado$i' size='10' value='nbferiado;$dia'>&nbsp;</td>";
+      else 
+       {
+        echo "<td width='50%' align='center'><input type='checkbox' name='nb$i' size='10' value='nb;$dia'><font face='Courier New' size='2'>&nbsp;</td>";
+        $faltapreencher++;
+       } 
+   }
+  else 
+   if($flag == "f")
+    if($destaque == $noiteb)
+     echo "<td width='50%' bgcolor='#00FFFF' align='center'><b><font color='#FF00FF' size='3' face='Courier New'> $noiteb&nbsp;</font></b></td>";
+    else
+     echo "<td width='50%' bgcolor='#00FFFF' align='center'><font face='Courier New' size='2'>$noiteb&nbsp;</td>";
+   else
+   if($destaque == $noiteb)
+    echo "<td width='50%' align='center'><b><font color='#FF00FF' size='3' face='Courier New'> $noiteb&nbsp;</font></b></td>";
+   else
+    echo "<td width='50%' align='center'><font face='Courier New' size='2'>$noiteb&nbsp;</td>";
+  echo "        </tr>";
+  echo "      </table>";
+  echo "    </td>";
+  echo "  </tr>";
+  echo "</table>";
+ }
+  // ------- Fim do controle de turno ---------------
+
+    //echo "tot  $faltapreencher<BR>";
+    echo "<input type='HIDDEN' name=faltapreencher value='$faltapreencher'>";
+
+    if($faltapreencher>=1)
+     if (($sysoplogado == $devsysop) OR ($preenchimento == "LIBERAR"))
+      echo "<p><input type='submit' value='Preencher' name='B1'>&nbsp;&nbsp;<input type='reset' value='Limpar' name='B2'></p></form>";
+     if($HTTP_SERVER_VARS[PHP_AUTH_USER] == "mboth")
+       echo "<p><input type='submit' value='Preencher' name='B1'>&nbsp;&nbsp;<input type='reset' value='Limpar' name='B2'></p></form>";
+   echo "<hr>";
+ }
+
+Function estadeferias($mesini,$sysoplogado)
+{
+ include 'mbcfg.php';
+ $conexao = mysql_connect("$imp_hostname","$imp_user","$imp_pass");
+ $db = mysql_select_db($imp_banco);
+ $sql = "SELECT * FROM tabord WHERE periodo='$mesini' ORDER BY `numseq`;";
+ $resultado = mysql_query($sql)
+ or die ("Não foi possível realizar a consulta ao banco de dados");
+ $i=0;
+
+ // faz o split do array
+ while ($linha=mysql_fetch_array($resultado)) 
+ {
+  $periodo  =$linha["periodo"];
+  $trimestre=$linha["trimestre"];
+  $librod   =$linha["libord"];
+  $sysop    =$linha["sysop"];
+  $nplant   =$linha["nplant"];
+  $saldomes =$linha["saldomes"];
+  $saltot   =$linha["saltot"];
+  $qtferias =$linha["qtferias"];
+  $ferias   =$linha["ferias"];
+ 
+  $i++;
+  //if(!empty($ferias[$i]))  // se nao for vazio eh sinal q esta de ferias.
+  if($ferias>1)
+   {
+    //echo "Entrei:  $nplant - $sysop<BR>";
+    if($nplant > "0.5")
+     {
+      echo "<p><font face='Courier New' size=2>$sysop estara de ferias, deve preencher por primeiro $nplant plantao(oes).</font>";
+      $sal=$saltot;
+      $preenchimento="";
+      if("$nplant" == "3.5")
+        $falta="3";
+      else
+      if("$nplant" == "2.5")
+        $falta="2";
+      else
+      if("$nplant" == "1.5")
+        $falta="1";
+      else
+      $falta=$nplant;
+      mostrapreenchimento($sysoplogado,$sysop,$falta,$mesini,$sal,$preenchimento); exit;
+     }
+   } // acaba o controle de quem estara de ferias.
+ }
+}
+     
+Function rodada($mesini,$sysoplogado)
+{
+ include 'mbcfg.php';
+ $conexao = mysql_connect("$imp_hostname","$imp_user","$imp_pass");
+ $db = mysql_select_db($imp_banco);
+ $sql = "SELECT * FROM tabord WHERE periodo='$mesini' ORDER BY numseq";
+ $resultado = mysql_query($sql)
+ or die ("Não foi possível realizar a consulta ao banco de dados");
+ 
+$flag="-99"; $devflag="99";
+$comdevedor="NO";
+
+while ($linha=mysql_fetch_array($resultado)) 
+{
+ $numseq   =$linha["numseq"];
+ $periodo  =$linha["periodo"];
+ $trimestre=$linha["trimestre"];
+ $librod   =$linha["librod"];
+ $sysop_ult    =$linha["sysop"];
+ $nplant   =$linha["nplant"];
+ $saldomes =$linha["saldomes"];
+ $saltot   =$linha["saltot"];
+ $qtferias =$linha["qtferias"];
+ $ferias   =$linha["ferias"];
+
+ //echo "NPLANT: $nplant SALDOmes: $saldomes SaldoTot: $saltot # $sysop_ult\n";
+ if($qtferias == 0)
+  {
+   if(($nplant > 0.5) AND ($nplant > $flag))
+    {
+     $flag=$nplant;
+     $paradoem=$sysop_ult;
+     $permitido="1";
+     if ($nplant >= 2)
+      {
+       $flag=$nplant;
+       $paradoem=$sysop_ult;
+       $permitido="2";
+      }
+    }
+   if(($nplant <= 0.5) AND ($saldomes >= 0) AND ($saltot < 0))
+    {
+     $saldodevedor=($saldomes+$saltot);
+     if($saldodevedor < $devflag)
+      {
+       $devflag=$saldodevedor;
+       $paradoem=$sysop_ult;
+       $permitido="1";
+      }
+      $comdevedor="OK";
+    }    
+  if($comdevedor == "NO")
+   {
+   if (($nplant <= 0.5) AND ($nplant > 0) AND ($saltot == 0))
+    {
+     $paradoem=$sysop_ult;
+     $permitido="1";
+     $comdevedor="OK";
+    }
+  if(($nplant <= 0.5) AND ($nplant > 0) AND ($saltot <= 3))
+   {
+    $devflag=$saldodevedor;
+    $paradoem=$sysop_ult;
+    $permitido="1";
+    $comdevedor="OK";
+   }
+   }
+  }
+ }
+ $sal=$saltot;
+ $preenchimento="";
+ mostrapreenchimento($sysoplogado,$paradoem,$permitido,$mesini,$sal,$preenchimento); exit;
+} 
+
+Function naoabre()
+{
+ print "<html>";
+ print "<head>";
+ print "<meta http-equiv=\"Content-Language\" content=\"en-us\">";
+ print "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1252\">";
+ print "<title>error</title>";
+ print "</head>";
+ print "<body>";
+ print "<p><font face=\"Courier New\">erro.</font></p>";
+ print "</body>";
+ print "</html>";
+}
+
+?>

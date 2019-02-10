@@ -1,0 +1,100 @@
+<?
+
+// Funcao para mandar email para lista informando os plantoes preenchidos (escolhidos).
+// ceplan 2.0
+// By Marcus Both - agosto/2004
+
+for($i=0;$i<$i_preenchido;$i++)
+ echo "<font size='2' face='Courier New'>$preenchido[$i]<BR>";
+
+if(!empty($i_preenchido_tmp))
+{
+ for($i=0;$i<$i_preenchido_tmp;$i++)
+  echo "<font size='2' face='Courier New'>$preenchido_temp_db[$i]<BR>";
+}
+
+echo "[envmail] $mesini<BR>";
+
+$conexao = mysql_connect("$imp_hostname","$imp_user","$imp_pass");
+$db = mysql_select_db($imp_banco);
+$sql = "SELECT periodo,descricao FROM tabsal WHERE periodo='$mesini'";
+$resultado = mysql_query($sql)
+or die ("Não foi possível realizar a consulta ao banco de dados");
+while ($linha=mysql_fetch_array($resultado))
+ {
+  $periodo   =$linha["periodo"];
+  $descricao =$linha["descricao"];
+  echo "<font size='2' face='Courier New'>Periodo: $descricao<BR>";
+  $assunto="[ceplan] Periodo: $descricao";
+  $messagesid=$periodo;
+ }
+
+
+// Envio do email para lista informando os plantoes preenchidos e o nome do proximo sysop q deve preencher o plantao.
+$texto="";
+// manda o email
+$sysop=strtolower($sysop);
+$isysop=$HTTP_SERVER_VARS[PHP_AUTH_USER];
+//$email.="$isysop@terra.com.br";
+$email.="$imp_emailto";
+$mailheaders="From: ".$isysop ."<$email>\n";
+$mailheaders.="Reply-To: ."<"$email>\n";
+$mailheaders.="Content-transfer-encoding: 7BIT\n";
+$mailheaders.="References: <$messagesid.trrceplan@terra.com.br>\n";
+$mailheaders.="Return-Path: <$email>\n";
+$mailheaders.="Message-id: <$messagesid.trrceplan@terra.com.br>\n";
+$mailheaders.="IP: "."<$REMOTE_ADDR>\n";
+$mailheaders.="X-mailer: XServer\n";
+$assunto="[ceplan] Periodo: $descricao";
+
+if($acabou <= 0)
+ $mailheaders.="Comments: OKA\n";
+
+$mailheaders.="MIME-version: 1.0\n";
+$subject="$assunto";
+$today=date("d/m/Y H:i");
+$texto="$sysop_0 preencheu em $today os seguintes horarios:\n";
+for($i=0;$i<$i_preenchido;$i++)
+ {
+  $convert_envmail=verificarturno_envmail($preenchido[$i]);
+  $texto.="$convert_envmail\n";
+ } 
+if(!empty($iferiado))
+{
+ //list($lixotemp,$numseq,$hora,$dia)=split(";",$ipreenchidoferiado[0]);
+ $convert_envmail=verificarturno_envmail($preenchidoferiado[0]);
+ $texto.="$convert_envmail\n";
+}
+
+if(!empty($i_preenchido_tmp))
+{
+ $texto.="Preenchido automaticamente p/ ceplan os ultimos plantoes faltantes p/ o $sysop_1 os seguintes horarios:\n";
+ for($i=0;$i<$i_preenchido_tmp;$i++)
+  {
+   $convert_envmail=verificarturno_envmail($preenchido_temp_db[$i]);
+   $texto.="$convert_envmail\n";
+   //$texto.="$preenchido_temp_db[$i]\n";
+  }
+}
+
+$texto.="---\n";
+
+if(("$moderador" == "$sysoplogado") AND (!empty($em_nome)))
+ $texto.="Moderador $sysoplogado esta autorizado e preencheu em nome do $sysop_0.\n";
+
+
+if(empty($sysop_1))
+ echo "Erro no controle do proximo sysop - informe o moderador $moderador.<BR>";
+// Caso nao tenha mais a TAG preencher eh sinal q acabou o preenchimeno, logo nao tem o proximo marcador.
+if($acabou > 0)
+ $texto.="PROXIMO: $sysop_1\n";
+else
+ $texto.="Periodo encerrado.\n";
+
+$texto.="\n";
+$texto.="http://aquario.terra.com.br/ceplan/\n";
+$texto.="--[ceplan v2.0]--\n";
+
+mail("mboth@terra.com.br", $subject, $texto, $mailheaders);
+
+?>

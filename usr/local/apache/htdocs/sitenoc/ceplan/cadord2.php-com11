@@ -1,0 +1,350 @@
+<?
+//Eh obrigatorio que este script seja chamado pelo "$obriga":
+$obriga="cadord.";
+$headers = getallheaders();
+while (list ($header, $value) = each ($headers))
+ {
+  $temrefer=ereg($obriga,$value);
+  if($temrefer)
+    $passa="OK";
+ //echo "$header: $value<br/>\n";
+}
+
+if((!$passa=="OK") OR (empty($passa)))
+{
+ naoabre();
+ exit;
+}
+
+$ordtmp[]="0";
+for($f=0;$f<11;$f++)
+ {
+  $tmp=$HTTP_POST_VARS["ord$f"];
+  //echo "A $tmp<BR>";
+  $checa=strlen($tmp);
+  if ($checa <= "1")
+    $ordtmp[$f]="0$tmp";
+  else
+    $ordtmp[$f]="$tmp";
+  //echo "B $ordtmp[$f] <BR>";
+ }
+
+echo "$HTTP_POST_VARS[ord0] -  $HTTP_POST_VARS[nome0] - $HTTP_POST_VARS[usaldo0]<BR>";
+echo "$HTTP_POST_VARS[ord1] -  $HTTP_POST_VARS[nome1] - $HTTP_POST_VARS[usaldo1]<BR>";
+echo "$HTTP_POST_VARS[ord2] -  $HTTP_POST_VARS[nome2] - $HTTP_POST_VARS[usaldo2]<BR>";
+echo "$HTTP_POST_VARS[ord3] -  $HTTP_POST_VARS[nome3] - $HTTP_POST_VARS[usaldo3]<BR>";
+echo "$HTTP_POST_VARS[ord4] -  $HTTP_POST_VARS[nome4] - $HTTP_POST_VARS[usaldo4]<BR>";
+echo "$HTTP_POST_VARS[ord5] -  $HTTP_POST_VARS[nome5] - $HTTP_POST_VARS[usaldo5]<BR>";
+echo "$HTTP_POST_VARS[ord6] -  $HTTP_POST_VARS[nome6] - $HTTP_POST_VARS[usaldo6]<BR>";
+echo "$HTTP_POST_VARS[ord7] -  $HTTP_POST_VARS[nome7] - $HTTP_POST_VARS[usaldo7]<BR>";
+echo "$HTTP_POST_VARS[ord8] -  $HTTP_POST_VARS[nome8] - $HTTP_POST_VARS[usaldo8]<BR>";
+echo "$HTTP_POST_VARS[ord9] -  $HTTP_POST_VARS[nome9] - $HTTP_POST_VARS[usaldo9]<BR>";
+echo "$HTTP_POST_VARS[ord10] -  $HTTP_POST_VARS[nome10] - $HTTP_POST_VARS[usaldo10]<BR>";
+echo "$HTTP_POST_VARS[ord11] -  $HTTP_POST_VARS[nome11] - $HTTP_POST_VARS[usaldo11]<BR>";
+
+$tab[0]="$ordtmp[0]-;-$mesini;trim3de3i;0;$HTTP_POST_VARS[nome0];0;0;$HTTP_POST_VARS[usaldo0];0;;";
+$tab[1]="$ordtmp[1]-;-$mesini;trim3de3i;0;$HTTP_POST_VARS[nome1];0;0;$HTTP_POST_VARS[usaldo1];0;;";
+$tab[2]="$ordtmp[2]-;-$mesini;trim3de3i;0;$HTTP_POST_VARS[nome2];0;0;$HTTP_POST_VARS[usaldo2];0;;";
+$tab[3]="$ordtmp[3]-;-$mesini;trim3de3i;0;$HTTP_POST_VARS[nome3];0;0;$HTTP_POST_VARS[usaldo3];0;;";
+$tab[4]="$ordtmp[4]-;-$mesini;trim3de3i;0;$HTTP_POST_VARS[nome4];0;0;$HTTP_POST_VARS[usaldo4];0;;";
+$tab[5]="$ordtmp[5]-;-$mesini;trim3de3i;0;$HTTP_POST_VARS[nome5];0;0;$HTTP_POST_VARS[usaldo5];0;;";
+$tab[6]="$ordtmp[6]-;-$mesini;trim3de3i;0;$HTTP_POST_VARS[nome6];0;0;$HTTP_POST_VARS[usaldo6];0;;";
+$tab[7]="$ordtmp[7]-;-$mesini;trim3de3i;0;$HTTP_POST_VARS[nome7];0;0;$HTTP_POST_VARS[usaldo7];0;;";
+$tab[8]="$ordtmp[8]-;-$mesini;trim3de3i;0;$HTTP_POST_VARS[nome8];0;0;$HTTP_POST_VARS[usaldo8];0;;";
+$tab[9]="$ordtmp[9]-;-$mesini;trim3de3i;0;$HTTP_POST_VARS[nome9];0;0;$HTTP_POST_VARS[usaldo9];0;;";
+$tab[10]="$ordtmp[10]-;-$mesini;trim3de3i;0;$HTTP_POST_VARS[nome10];0.0;0;$HTTP_POST_VARS[usaldo10];0;;";
+$tab[11]="$ordtmp[11]-;-$mesini;trim3de3i;0;$HTTP_POST_VARS[nome11];0.0;0;$HTTP_POST_VARS[usaldo11];0;;";
+
+// Deixa o array (lista de sorteado, na ordem correta).
+asort ($tab);
+reset ($tab);
+$i="0"; $tabordmem=""; $prio=""; $resto="";
+while (list($key,$val) = each ($tab))
+ {
+  list($prio,$resto)=split("-;-",$val); 
+  if(!empty($prio))
+   {
+    $tabordmem[$i]="$resto";
+    //echo "como ficou: $tabordmem[$i]<BR>";
+    $i++;
+   }
+ } 
+
+
+$prox_descricao="$HTTP_POST_VARS[prox_descricao]";
+
+//for($i=0;$i<12;$i++)
+//{
+// echo "ddd $i  $tabordmem[$i]<BR>";
+//}
+
+
+$mesini=$HTTP_POST_VARS[mesini];
+$mesi=substr($mesini,2,2);
+$anoi=substr($mesini,4,4);
+$mesf=substr($mesini,11,2);
+$anof=substr($mesini,13,4);
+
+global $mesini;
+
+// Teste se o periodo jah estiver fechado.
+include 'mbcfg.php';
+$conexao = mysql_connect("$imp_hostname","$imp_user","$imp_pass");
+$db = mysql_select_db($imp_banco);
+$sql = "SELECT * FROM tabsal WHERE periodo='$mesini'";
+$resultado = mysql_query($sql)
+or die ("Não foi possível realizar a consulta ao banco de dados");
+while ($linha=mysql_fetch_array($resultado))
+{
+ $numseq  =$linha["numseq"];
+ $periodo =$linha["periodo"];
+ $ctrl    =$linha["ctrl"];
+ $num     =$linha["num"];
+
+ if($periodo == $mesini)
+  {
+   echo "<p><font face='Courier New' size='2' color='#008000'>Este periodo ja esta fechado.</font></p><BR>\n";
+   exit;
+  }
+}
+
+$acm_o=11;
+
+$english_day=0; $traduz_semana=0; $diasemana[]=0; 
+
+// checa pra ver quantos dias tem o mes.
+$tmes=date("t", mktime(0,0,0,$mesi,16,$anoi));
+//echo "Num.de dias no mes $numdiamesi\n";
+
+$totdia=0;
+$plantao[]=0; $itot=0;
+
+// --- Consulta de feriado
+$temferiado="";
+$feriado="";
+$conexao = mysql_connect("$imp_hostname","$imp_user","$imp_pass");
+$db = mysql_select_db($imp_banco);
+$sql = "SELECT * FROM tabfer WHERE periodo='$mesini'";
+$resultado = mysql_query($sql)
+or die ("Não foi possível realizar a consulta ao banco de dados");
+while ($linha=mysql_fetch_array($resultado))
+{
+ $numseq  =$linha["numseq"];
+ $periodo =$linha["periodo"];
+ $dia     =$linha["dia"];
+ $diasem  =$linha["diasem"];
+ $descricao=$linha["descricao"];
+
+ echo "feriado - $periodo<BR>";
+ $temferiado="sim";
+ $feriado.="$dia$diasem;";
+}
+// --- fim do feriado.
+
+//echo "TEM FERIADO: $temferiado<BR>\n";
+//echo "FERIADO - $feriado<BR>\n";
+$oqei="";
+for($dia=16;$dia<=$tmes;$dia++)   // tmes eh o num. de dias q tem o mes inicial.
+{
+ //echo "Dia $dia MesInicial: $mesi - <BR>";
+ $english_day=date("D", mktime(0,0,0,$mesi,$dia,$anoi)); 
+   //echo "eng: $english_day - <BR>";
+   //echo "diastd: $diasemana[$totdia]<BR>";
+ $diasemana[$totdia]=traduz_semana($english_day);
+ $temferiado=ereg("$dia/$mesi$english_day",$feriado,$oqei);
+   // quebra a variavel/vetor feriado e compara. 
+   // echo "campara: $oqei[0] ----- $dia/$mesi$english_day<BR>";
+ if("$oqei[0]" == "$dia/$mesi$english_day")
+ {
+ if($temferiado)
+  {
+   $plantao[$itot]="$mesini-;-$dia/$mesi-;-f-;-$diasemana[$totdia]";
+   echo "Tem Feriado: - $plantao[$itot]<BR>";
+   $itot++;
+  }
+ } 
+ if(!$temferiado)
+  {
+   $diasemana[$totdia]=traduz_semana($english_day);
+   if($diasemana[$totdia] == "Sab")
+    {
+     $plantao[$itot]="$mesini-;-$dia/$mesi-;-s-;-$diasemana[$totdia]";
+     $itot++;
+    } 
+   if($diasemana[$totdia] == "Dom")
+    {
+     $plantao[$itot]="$mesini-;-$dia/$mesi-;-d-;-$diasemana[$totdia]";
+     $itot++;
+    }
+   $totdia++;
+  }
+}
+
+for($dia=1;$dia<16;$dia++)        // do dia 01 ate o dia 15.
+{
+ //echo "Dia $dia MesFinal: $mesf -";
+ $english_day=date("D", mktime(0,0,0,$mesf,$dia,$anof));
+ $diasemana[$totdia]=traduz_semana($english_day);
+ //echo "Dia da Semana: $diasemana[$totdia]<BR>";
+ $temferiado=ereg("$dia/$mesf$english_day",$feriado,$oqei);
+ //echo "campara: $oqei[0] ----- $dia/$mesf$english_day<BR>";
+ if("$oqei[0]" == "$dia/$mesf$english_day")
+ {
+ if($temferiado)
+  {
+   $plantao[$itot]="$mesini-;-$dia/$mesf-;-f-;-$diasemana[$totdia]";
+   echo "Tem Feriado: - $plantao[$itot]<BR>";
+   $itot++;
+  }
+ }
+ if(!$temferiado)
+  {
+   $diasemana[$totdia]=traduz_semana($english_day);
+   if($diasemana[$totdia] == "Sab")
+   {
+    $plantao[$itot]="$mesini-;-$dia/$mesf-;-s-;-$diasemana[$totdia]";
+    $itot++;
+   }
+   if($diasemana[$totdia] == "Dom")
+   {
+    $plantao[$itot]="$mesini-;-$dia/$mesf-;-d-;-$diasemana[$totdia]";
+    $itot++;
+   }
+   $totdia++;
+  }
+}
+
+Function traduz_semana($english_day)
+{
+switch($english_day) 
+{ 
+    case "Mon": 
+        $portuguese_day = "Seg"; 
+        break; 
+    case "Tue": 
+        $portuguese_day = "Ter"; 
+        break; 
+    case "Wed": 
+        $portuguese_day = "Qua"; 
+        break; 
+    case "Thu": 
+        $portuguese_day = "Qui"; 
+        break;     
+    case "Fri": 
+        $portuguese_day = "Sex"; 
+        break; 
+    case "Sat": 
+        $portuguese_day = "Sab"; 
+        break; 
+    case "Sun": 
+        $portuguese_day = "Dom"; 
+        break; 
+} 
+return ($portuguese_day);
+}
+
+
+// Aqui a variavel plantao ja esta incrementada contendo todos os dias da semana,
+// todos os dias de plantao.
+echo "<font face='Courier New' size='2'>Plantoes para o periodo $mesini</font><BR>"; 
+$contadorplantao=0;
+$totplan=(double)0; $totdia=0; $totint=0; $tothoras=0;
+for($t=0;$t<$itot;$t++)   // itot eh o numero de dias de plantoes.
+ {
+  list($tperiodo[$t],$tdia[$t],$tflag[$t],$tdiasemana[$t])=split("-;-",$plantao[$t]); 
+  // quebra os plantoes com periodo, dia, feriado, dia da semana.
+  if($tflag[$t]=="s")
+   {
+    $totplan++; 
+   }
+  if($tflag[$t]=="d")
+   {
+    $totplan++;
+   }
+ }
+
+$totplan=(double)($totplan/2);
+$tothoras=$totplan*6;
+echo "<font face='Courier New' size='2'>Minimo de plantoes obrigatorio por sysop: $totplan</font><BR>";
+echo "<font face='Courier New' size='2'>Minimo de horas: $tothoras</font><BR>";
+echo "<BR><font face='Courier New' size='2'>Abaixo deve-se informar os dias que o sysop estara ausente.</font>";
+
+// ---------- tabela ordem de preenchimento
+$totpost=0;
+print "<form method='POST' action=cadord3.php>";
+$ultnumseq="0";
+$conexao = mysql_connect("$imp_hostname","$imp_user","$imp_pass");
+$db = mysql_select_db($imp_banco);
+$sql = "SELECT * FROM tabord ORDER BY numseq";
+$resultado = mysql_query($sql)
+or die ("Não foi possível realizar a consulta ao banco de dados");
+while ($linha=mysql_fetch_array($resultado)) 
+{
+ $numseq   =$linha["numseq"];
+ $periodo  =$linha["periodo"];
+ $trimestre=$linha["trimestre"];
+ $librod   =$linha["librod"];
+ $sysop    =$linha["sysop"];
+ $nplant   =$linha["nplant"];
+ $saldomes =$linha["saldomes"];
+ $saltot   =$linha["saltot"];
+ $qtferias =$linha["qtferias"];
+ $ferias   =$linha["ferias"];
+ if($numseq > $ultnumseq)
+   $ultnumseq=$numseq;
+}
+for($i=0;$i<11;$i++)
+ { 
+  list($lixoa,$lixob,$lixoc,$sysopx[$i],$lixod,$lixoe,$lixof)=split(";",$tabordmem[$i]);
+  echo "<BR><font face='Courier New' size='2'>$sysopx[$i]</font><BR>";
+  for($t=0;$t<$itot;$t++)   // itot eh o numero de dias de plantoes.
+   {
+    list($tperiodo[$t],$tdia[$t],$tflag[$t],$tdiasemana[$t])=split("-;-",$plantao[$t]);
+    //echo "$tdia[$t]    ";
+    if($tflag[$t] != "f")
+    {
+     $totpost++;
+     echo "<font face='Courier New' size='2'><input type='checkbox' name='ausente$totpost' value='$sysopx[$i];$tdia[$t]'> $tdia[$t]$tflag[$t]</font>";
+    }
+    echo "<BR>";
+   }
+ }
+
+print "<input type='HIDDEN' name='ultnumseq' value=$ultnumseq>";
+print "<input type='HIDDEN' name='totplan' value=$totplan>";
+print "<input type='HIDDEN' name='totalpost' value=$totpost>";
+print "<input type='HIDDEN' name='tothoras' value=$tothoras>";
+print "<input type='HIDDEN' name='mesini' value=$mesini>";
+print "<input type='HIDDEN' name='prox_descricao' value='$prox_descricao'>";
+print "<input type='HIDDEN' name='tabord0' value='$tabordmem[0]'>";
+print "<input type='HIDDEN' name='tabord1' value='$tabordmem[1]'>";
+print "<input type='HIDDEN' name='tabord2' value='$tabordmem[2]'>";
+print "<input type='HIDDEN' name='tabord3' value='$tabordmem[3]'>";
+print "<input type='HIDDEN' name='tabord4' value='$tabordmem[4]'>";
+print "<input type='HIDDEN' name='tabord5' value='$tabordmem[5]'>";
+print "<input type='HIDDEN' name='tabord6' value='$tabordmem[6]'>";
+print "<input type='HIDDEN' name='tabord7' value='$tabordmem[7]'>";
+print "<input type='HIDDEN' name='tabord8' value='$tabordmem[8]'>";
+print "<input type='HIDDEN' name='tabord9' value='$tabordmem[9]'>";
+print "<input type='HIDDEN' name='tabord10' value='$tabordmem[10]'>";
+print "<input type='HIDDEN' name='tabord11' value='$tabordmem[11]'>";
+
+// print "<input type='HIDDEN' name='plantoes' value=$plantao>";
+print "<p><input type='submit' value='Gerar periodo' name='B1'>
+</form>";
+
+Function naoabre()
+{
+ print "<html>";
+ print "<head>";
+ print "<meta http-equiv=\"Content-Language\" content=\"en-us\">";
+ print "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1252\">";
+ print "<title>error</title>";
+ print "</head>";
+ print "<body>";
+ print "<p><font face=\"Courier New\">erro.</font></p>";
+ print "</body>";
+ print "</html>";
+}
+
+?>
